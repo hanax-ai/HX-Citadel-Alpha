@@ -1,0 +1,64 @@
+# Citadel Alpha - HX Platform Integration
+# Modified Crawl4AI Agent for production use
+
+version: '3.8'
+
+services:
+  citadel-alpha:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: citadel-alpha
+    ports:
+      - "11236:11236"
+    env_file:
+      - .env
+    environment:
+      # HX Platform Services
+      - OLLAMA_EMBEDDINGS_URL=${OLLAMA_EMBEDDINGS_URL:-http://hx-orchestrator-server:11434}
+      - OLLAMA_EMBEDDINGS_MODEL=${OLLAMA_EMBEDDINGS_MODEL:-mxbai-embed-large}
+      - OLLAMA_LLM_URL=${OLLAMA_LLM_URL:-http://hx-ollama1:11434}
+      - OLLAMA_LLM_MODEL=${OLLAMA_LLM_MODEL:-gemma3:27b}
+      - QDRANT_URL=${QDRANT_URL:-https://hx-vectordb-server:6333}
+      - QDRANT_COLLECTION_NAME=${QDRANT_COLLECTION_NAME:-citadel_alpha_crawls}
+      - REDIS_URL=${REDIS_URL:-redis://hx-sqldb-server:6379}
+
+      # Application
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_HOST=${API_HOST:-0.0.0.0}
+      - API_PORT=${API_PORT:-11236}
+      - DEBUG_MODE=${DEBUG_MODE:-false}
+
+      # Crawl4AI
+      - PLAYWRIGHT_HEADLESS=${PLAYWRIGHT_HEADLESS:-true}
+      - MAX_CONCURRENT_CRAWLS=${MAX_CONCURRENT_CRAWLS:-5}
+      - CRAWL_TIMEOUT=${CRAWL_TIMEOUT:-30000}
+    volumes:
+      # Persistent storage for crawl data
+      - ./data:/app/data
+      # Logs
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11236/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - citadel-network
+      - hx-platform
+    extra_hosts:
+      # HX Platform service DNS mappings
+      - "hx-orchestrator-server:192.168.10.10"
+      - "hx-ollama1:192.168.10.11"
+      - "hx-vectordb-server:192.168.10.12"
+      - "hx-sqldb-server:192.168.10.14"
+      - "hx-webui-server:192.168.10.15"
+
+networks:
+  citadel-network:
+    driver: bridge
+  hx-platform:
+    external: true
+    name: hx-platform

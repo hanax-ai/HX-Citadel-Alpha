@@ -1,0 +1,141 @@
+---
+# Deploy Citadel Alpha container to hx-test-server
+# Modified version with HX Platform integration
+
+- name: "[HX-Citadel-Alpha] Deploy Citadel Alpha"
+  hosts: test_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    container_name: citadel-alpha
+    container_port: "{{ citadel_alpha_port }}"
+    project_dir: /opt/hx-citadel-alpha/citadel-alpha
+    compose_file: "{{ project_dir }}/docker-compose.yml"
+
+  pre_tasks:
+    - name: "[Pre-flight] Verify Docker is installed"
+      ansible.builtin.command: docker --version
+      register: docker_check
+      changed_when: false
+      failed_when: docker_check.rc != 0
+
+    - name: "[Pre-flight] Verify HX Platform services reachable"
+      ansible.builtin.uri:
+        url: "{{ item.url }}"
+        status_code: [200, 401, 404]  # Accept auth required or not found (service exists)
+        timeout: 5
+      loop:
+        - { name: "Ollama Embeddings", url: "{{ ollama_embeddings_url }}/api/version" }
+        - { name: "Ollama LLM", url: "{{ ollama_llm_url }}/api/version" }
+        - { name: "Qdrant", url: "{{ qdrant_url }}/collections" }
+      register: service_checks
+      failed_when: false
+
+    - name: "[Pre-flight] Display service connectivity"
+      ansible.builtin.debug:
+        msg: "{{ item.item.name }}: {{ 'REACHABLE' if item.status in [200, 401, 404] else 'UNREACHABLE' }}"
+      loop: "{{ service_checks.results }}"
+
+  tasks:
+    - name: "[Setup] Create project directory"
+      ansible.builtin.file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: agent0
+        group: agent0
+        mode: '0755'
+
+    - name: "[Setup] Create data directory"
+      ansible.builtin.file:
+        path: "{{ project_dir }}/data"
+        state: directory
+        owner: agent0
+        group: agent0
+        mode: '0755'
+
+    - name: "[Deploy] Copy docker-compose.yml"
+      ansible.builtin.copy:
+        src: "../../containers/citadel-alpha/docker-compose.yml"
+        dest: "{{ compose_file }}"
+        owner: agent0
+        group: agent0
+        mode: '0644'
+
+    - name: "[Deploy] Copy source files"
+      ansible.builtin.synchronize:
+        src: "../../containers/citadel-alpha/src/"
+        dest: "{{ project_dir }}/src/"
+        delete: yes
+        recursive: yes
+
+    - name: "[Deploy] Create environment file from template"
+      ansible.builtin.template:
+        src: "../../containers/citadel-alpha/.env.example"
+        dest: "{{ project_dir }}/.env"
+        owner: agent0
+        group: agent0
+        mode: '0600'
+        force: no
+
+    - name: "[Config] Set HX Platform endpoints in .env"
+      ansible.builtin.lineinfile:
+        path: "{{ project_dir }}/.env"
+        regexp: "^{{ item.key }}="
+        line: "{{ item.key }}={{ item.value }}"
+        create: yes
+        owner: agent0
+        group: agent0
+        mode: '0600'
+      loop:
+        - { key: "OLLAMA_EMBEDDINGS_URL", value: "{{ ollama_embeddings_url }}" }
+        - { key: "OLLAMA_LLM_URL", value: "{{ ollama_llm_url }}" }
+        - { key: "QDRANT_URL", value: "{{ qdrant_url }}" }
+        - { key: "REDIS_URL", value: "{{ redis_url }}" }
+        - { key: "OPENWEBUI_URL", value: "{{ openwebui_url }}" }
+      no_log: true  # Don't expose URLs in logs
+
+    - name: "[Docker] Pull latest image"
+      ansible.builtin.command: docker-compose -f {{ compose_file }} pull
+      args:
+        chdir: "{{ project_dir }}"
+      become_user: agent0
+
+    - name: "[Docker] Start container"
+      ansible.builtin.command: docker-compose -f {{ compose_file }} up -d
+      args:
+        chdir: "{{ project_dir }}"
+      become_user: agent0
+
+  post_tasks:
+    - name: "[Validation] Wait for container to be ready"
+      ansible.builtin.wait_for:
+        host: "{{ inventory_hostname }}"
+        port: "{{ container_port }}"
+        delay: 5
+        timeout: 60
+
+    - name: "[Validation] Health check"
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}:{{ container_port }}/health"
+        status_code: 200
+        timeout: 10
+      register: health_check
+      retries: 5
+      delay: 3
+      until: health_check.status == 200
+
+    - name: "[Validation] Readiness check"
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}:{{ container_port }}/ready"
+        status_code: [200, 503]  # 503 = not ready yet (deps unavailable)
+        timeout: 10
+      register: ready_check
+
+    - name: "[Validation] Display readiness status"
+      ansible.builtin.debug:
+        msg: "Citadel Alpha readiness: {{ 'READY' if ready_check.status == 200 else 'NOT READY (check HX Platform services)' }}"
+
+    - name: "[Success] Citadel Alpha deployment complete"
+      ansible.builtin.debug:
+        msg: "Citadel Alpha is running at http://{{ inventory_hostname }}:{{ container_port }}"

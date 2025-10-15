@@ -1,0 +1,62 @@
+---
+# Install Docker on hx-test-server
+# Based on hx-citadel-ansible Docker role
+
+- name: "[HX-Citadel-Alpha] Install Docker on test server"
+  hosts: test_servers
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: "[Pre-flight] Verify connectivity"
+      ansible.builtin.ping:
+
+    - name: "[Pre-flight] Check disk space"
+      ansible.builtin.shell: df -h / | tail -1 | awk '{print $4}'
+      register: disk_space
+      changed_when: false
+
+    - name: "[Pre-flight] Display disk space"
+      ansible.builtin.debug:
+        msg: "Available disk space: {{ disk_space.stdout }}"
+
+  roles:
+    - role: docker
+      # This role should be copied from /home/agent0/hx-citadel-ansible/roles/docker
+      # or referenced via ansible-galaxy or git submodule
+
+  post_tasks:
+    - name: "[Validation] Verify Docker installation"
+      ansible.builtin.command: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: "[Validation] Display Docker version"
+      ansible.builtin.debug:
+        msg: "Docker installed: {{ docker_version.stdout }}"
+
+    - name: "[Validation] Verify Docker Compose"
+      ansible.builtin.command: docker compose version
+      register: compose_version
+      changed_when: false
+
+    - name: "[Validation] Display Docker Compose version"
+      ansible.builtin.debug:
+        msg: "Docker Compose installed: {{ compose_version.stdout }}"
+
+    - name: "[Validation] Verify Docker service"
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: yes
+      become: yes
+
+    - name: "[Validation] Test Docker hello-world"
+      ansible.builtin.command: docker run --rm hello-world
+      register: hello_world
+      changed_when: false
+      become: yes
+
+    - name: "[Success] Docker installation complete"
+      ansible.builtin.debug:
+        msg: "Docker successfully installed and validated on {{ inventory_hostname }}"

@@ -1,0 +1,27 @@
+# Crawl4AI Agent Requirements
+# Based on ottomator-agents/crawl4AI-agent-v2
+
+# Core
+crawl4ai==0.6.2
+playwright==1.52.0
+
+# AI/ML
+openai==1.76.2
+chromadb==1.0.7
+
+# Web
+streamlit==1.45.0
+fastapi==0.115.9
+uvicorn==0.34.2
+
+# Utilities
+python-dotenv==1.1.0
+pydantic==2.11.4
+requests==2.32.3
+
+# Document processing
+beautifulsoup4==4.13.4
+lxml==5.4.0
+
+# Embeddings
+sentence-transformers==4.1.0

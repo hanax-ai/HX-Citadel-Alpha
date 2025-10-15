@@ -1,0 +1,94 @@
+---
+# Deploy Crawl4AI Agent container to hx-test-server
+# Original reference implementation
+
+- name: "[HX-Citadel-Alpha] Deploy Crawl4AI Agent"
+  hosts: test_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    container_name: crawl4ai-agent
+    container_port: "{{ crawl4ai_port }}"
+    project_dir: /opt/hx-citadel-alpha/crawl4ai-agent
+    compose_file: "{{ project_dir }}/docker-compose.yml"
+
+  pre_tasks:
+    - name: "[Pre-flight] Verify Docker is installed"
+      ansible.builtin.command: docker --version
+      register: docker_check
+      changed_when: false
+      failed_when: docker_check.rc != 0
+
+    - name: "[Pre-flight] Check if container is already running"
+      ansible.builtin.shell: docker ps -q -f name={{ container_name }}
+      register: container_running
+      changed_when: false
+      failed_when: false
+
+  tasks:
+    - name: "[Setup] Create project directory"
+      ansible.builtin.file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: agent0
+        group: agent0
+        mode: '0755'
+
+    - name: "[Deploy] Copy docker-compose.yml"
+      ansible.builtin.copy:
+        src: "../../containers/crawl4ai-agent/docker-compose.yml"
+        dest: "{{ compose_file }}"
+        owner: agent0
+        group: agent0
+        mode: '0644'
+
+    - name: "[Deploy] Copy source files"
+      ansible.builtin.synchronize:
+        src: "../../containers/crawl4ai-agent/src/"
+        dest: "{{ project_dir }}/src/"
+        delete: yes
+        recursive: yes
+
+    - name: "[Deploy] Copy environment file"
+      ansible.builtin.copy:
+        src: "../../containers/crawl4ai-agent/.env.example"
+        dest: "{{ project_dir }}/.env"
+        owner: agent0
+        group: agent0
+        mode: '0600'
+        force: no
+
+    - name: "[Docker] Pull latest image"
+      ansible.builtin.command: docker-compose -f {{ compose_file }} pull
+      args:
+        chdir: "{{ project_dir }}"
+      become_user: agent0
+
+    - name: "[Docker] Start container"
+      ansible.builtin.command: docker-compose -f {{ compose_file }} up -d
+      args:
+        chdir: "{{ project_dir }}"
+      become_user: agent0
+
+  post_tasks:
+    - name: "[Validation] Wait for container to be ready"
+      ansible.builtin.wait_for:
+        host: "{{ inventory_hostname }}"
+        port: "{{ container_port }}"
+        delay: 5
+        timeout: 60
+
+    - name: "[Validation] Health check"
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}:{{ container_port }}/health"
+        status_code: 200
+        timeout: 10
+      register: health_check
+      retries: 5
+      delay: 3
+      until: health_check.status == 200
+
+    - name: "[Success] Crawl4AI Agent deployment complete"
+      ansible.builtin.debug:
+        msg: "Crawl4AI Agent is running at http://{{ inventory_hostname }}:{{ container_port }}"

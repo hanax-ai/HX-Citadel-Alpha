@@ -1,0 +1,35 @@
+# Crawl4AI Agent - Original Reference Implementation
+# Source: ottomator-agents/crawl4AI-agent-v2
+
+version: '3.8'
+
+services:
+  crawl4ai-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crawl4ai-agent
+    ports:
+      - "11235:11235"
+    env_file:
+      - .env
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MODEL_CHOICE=${MODEL_CHOICE:-gpt-4-turbo}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11235/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - crawl4ai-network
+
+networks:
+  crawl4ai-network:
+    driver: bridge

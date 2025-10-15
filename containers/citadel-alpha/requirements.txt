@@ -1,0 +1,42 @@
+# Citadel Alpha Requirements
+# Modified from crawl4AI-agent-v2 for HX Platform Integration
+
+# Core - Crawl4AI
+crawl4ai==0.6.2
+playwright==1.52.0
+
+# HX Platform Integration - Ollama
+ollama==0.4.8
+
+# HX Platform Integration - Qdrant
+qdrant-client==1.12.1
+
+# HX Platform Integration - Redis
+redis==5.2.1
+hiredis==3.1.0
+
+# Web Framework - FastAPI (replacing Streamlit)
+fastapi==0.115.9
+uvicorn[standard]==0.34.2
+
+# Utilities
+python-dotenv==1.1.0
+pydantic==2.11.4
+pydantic-settings==2.7.4
+requests==2.32.3
+
+# Document processing
+beautifulsoup4==4.13.4
+lxml==5.4.0
+
+# Embeddings (sentence-transformers kept for fallback/local embeddings)
+sentence-transformers==4.1.0
+
+# Monitoring & Logging
+structlog==24.4.0
+python-json-logger==3.2.1
+
+# Testing (development only)
+pytest==8.3.4
+pytest-asyncio==0.24.0
+httpx==0.28.1
