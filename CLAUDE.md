@@ -53,6 +53,45 @@ mypy src/
 trivy image citadel-alpha:latest
 ```
 
+### Docker and Docker Compose
+
+**IMPORTANT**: This project uses **Docker Compose V2** (plugin architecture).
+
+**Correct commands**:
+```bash
+docker compose up          # ✅ V2 command
+docker compose down        # ✅ V2 command
+docker compose build       # ✅ V2 command
+```
+
+**Incorrect commands** (will not work):
+```bash
+docker-compose up          # ❌ V1 command (NOT installed)
+docker-compose down        # ❌ V1 command (NOT installed)
+```
+
+**Installed Components** (from Docker role):
+- `docker-ce` - Docker Engine (latest stable from Docker CE repo)
+- `docker-ce-cli` - Docker CLI
+- `containerd.io` - Container runtime
+- `docker-compose-plugin` - Docker Compose V2 **as a plugin**
+- `docker-buildx-plugin` - BuildX for advanced builds
+
+**Version Verification**:
+```bash
+# Docker Engine
+docker --version
+# Expected: Docker version 24.x.x or later
+
+# Docker Compose V2
+docker compose version
+# Expected: Docker Compose version v2.x.x or later
+```
+
+**Version Consistency**: Dev server (hx-devops-server) and test server (hx-test-server) must have **identical Docker versions**. The Ansible Docker role ensures this by installing from the same Docker CE stable repository.
+
+**Documentation**: See `ansible/roles/docker/VERSIONS.md` for detailed version information.
+
 ---
 
 ## Project Architecture

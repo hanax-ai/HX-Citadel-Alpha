@@ -1,0 +1,23 @@
+---
+# roles/docker/tasks/containers.yml
+# Uses community.docker.docker_container (collection required in meta/main.yml)
+
+- name: "[Containers] Launch explicitly named containers"
+  community.docker.docker_container:
+    name: "{{ item.name }}"
+    image: "{{ item.image }}"
+    state: started
+    restart_policy: "{{ item.restart_policy | default('unless-stopped') }}"
+    env: "{{ item.env | default({}) }}"
+    ports: "{{ item.ports | default([]) }}"
+    volumes: "{{ item.volumes | default([]) }}"
+    command: "{{ item.command | default(omit) }}"
+  loop: "{{ docker_containers_explicit }}"
+  when: docker_containers_explicit | length > 0
+
+- name: "[Containers] Process each container definition"
+  include_tasks: containers_by_count_inner.yml
+  loop: "{{ docker_containers_by_count }}"
+  loop_control:
+    loop_var: def
+  when: docker_containers_by_count | length > 0

@@ -42,6 +42,15 @@ ssh agent0@192.168.10.13 "ls -la /home/agent0/hx-citadel-ansible/roles/docker"
 - Option 2: Copy role to `ansible/roles/docker/` in HX-Citadel-Alpha repo
 - **Chosen**: Copy role to local repo for version control and portability
 
+**Status**: ✅ Completed - Docker role copied to `ansible/roles/docker/`
+
+**Docker Versions**:
+- **Docker Engine**: Latest stable from Docker CE repository (docker-ce package)
+- **Docker Compose**: V2 as plugin (docker-compose-plugin)
+  - **Important**: Use `docker compose` command, NOT `docker-compose`
+- **Additional**: containerd.io, docker-buildx-plugin, docker-ce-cli
+- **Version Documentation**: See `ansible/roles/docker/VERSIONS.md`
+
 ---
 
 ### 3. Original Dependencies
