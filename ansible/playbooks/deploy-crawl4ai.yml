@@ -43,6 +43,22 @@
         group: agent0
         mode: '0644'
 
+    - name: "[Deploy] Copy Dockerfile"
+      ansible.builtin.copy:
+        src: "../../containers/crawl4ai-agent/Dockerfile"
+        dest: "{{ project_dir }}/Dockerfile"
+        owner: agent0
+        group: agent0
+        mode: '0644'
+
+    - name: "[Deploy] Copy requirements.txt"
+      ansible.builtin.copy:
+        src: "../../containers/crawl4ai-agent/requirements.txt"
+        dest: "{{ project_dir }}/requirements.txt"
+        owner: agent0
+        group: agent0
+        mode: '0644'
+
     - name: "[Deploy] Copy source files"
       ansible.builtin.synchronize:
         src: "../../containers/crawl4ai-agent/src/"
@@ -60,13 +76,13 @@
         force: no
 
     - name: "[Docker] Pull latest image"
-      ansible.builtin.command: docker-compose -f {{ compose_file }} pull
+      ansible.builtin.shell: sg docker -c 'docker compose -f {{ compose_file }} pull'
       args:
         chdir: "{{ project_dir }}"
       become_user: agent0
 
     - name: "[Docker] Start container"
-      ansible.builtin.command: docker-compose -f {{ compose_file }} up -d
+      ansible.builtin.shell: sg docker -c 'docker compose -f {{ compose_file }} up -d'
       args:
         chdir: "{{ project_dir }}"
       become_user: agent0

@@ -1,8 +1,6 @@
 # Crawl4AI Agent - Original Reference Implementation
 # Source: ottomator-agents/crawl4AI-agent-v2
 
-version: '3.8'
-
 services:
   crawl4ai-agent:
     build:
